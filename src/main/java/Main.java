@@ -1,0 +1,43 @@
+import org.eclipse.jetty.server.Handler;
+import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.handler.HandlerList;
+import org.eclipse.jetty.servlet.ServletContextHandler;
+import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.util.thread.QueuedThreadPool;
+
+import java.util.Map;
+
+/**
+ * Created by IntelliJ IDEA.
+ * User: 3D-GRAF
+ * Date: 23.03.14
+ * Time: 19:24
+ */
+public class Main {
+    public static void main(String[] args) throws Exception {
+        Server server = runWebServer();
+
+        server.join();
+    }
+
+    public static Server runWebServer() throws Exception {
+        ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
+
+        Frontend frontend = new Frontend();
+        context.addServlet(new ServletHolder(frontend), "/*");
+
+        HandlerList handlers = new HandlerList();
+        handlers.setHandlers(new Handler[]{context});
+
+        Server server = new Server(8080);
+        server.setHandler(handlers);
+
+        QueuedThreadPool threadPool = (QueuedThreadPool)server.getThreadPool();
+        threadPool.setMinThreads(10);
+        threadPool.setMaxThreads(100);
+
+        server.start();
+
+        return server;
+    }
+}

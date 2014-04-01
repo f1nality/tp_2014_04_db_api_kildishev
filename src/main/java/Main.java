@@ -34,7 +34,7 @@ public class Main {
 
         QueuedThreadPool threadPool = (QueuedThreadPool)server.getThreadPool();
         threadPool.setMinThreads(10);
-        threadPool.setMaxThreads(100);
+        threadPool.setMaxThreads(200);
 
         server.start();
 

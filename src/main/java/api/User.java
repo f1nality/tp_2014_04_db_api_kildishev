@@ -1,4 +1,6 @@
-import com.sun.xml.internal.bind.v2.TODO;
+package api;
+
+import db.DBUtil;
 import org.json.JSONException;
 import org.json.JSONObject;
 import java.sql.*;
@@ -6,6 +8,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+/**
+ * @author d.kildishev
+ */
 public class User {
     Connection connection = null;
 

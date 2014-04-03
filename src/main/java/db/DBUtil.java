@@ -1,3 +1,5 @@
+package db;
+
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -5,10 +7,7 @@ import org.json.JSONObject;
 import java.sql.*;
 
 /**
- * Created by IntelliJ IDEA.
- * User: 3D-GRAF
- * Date: 30.03.14
- * Time: 18:31
+ * @author d.kildishev
  */
 public class DBUtil {
     public static Connection openConnection() {

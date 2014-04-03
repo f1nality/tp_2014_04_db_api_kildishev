@@ -1,9 +1,14 @@
+package api;
+
+import db.DBUtil;
 import org.json.JSONException;
 import org.json.JSONObject;
 import java.sql.*;
-import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * @author d.kildishev
+ */
 public class Forum {
     Connection connection = null;
 

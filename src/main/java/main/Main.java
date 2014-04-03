@@ -1,3 +1,6 @@
+package main;
+
+import frontend.Frontend;
 import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.HandlerList;
@@ -8,10 +11,7 @@ import org.eclipse.jetty.util.thread.QueuedThreadPool;
 import java.util.Map;
 
 /**
- * Created by IntelliJ IDEA.
- * User: 3D-GRAF
- * Date: 23.03.14
- * Time: 19:24
+ * @author d.kildishev
  */
 public class Main {
     public static void main(String[] args) throws Exception {

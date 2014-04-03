@@ -1,14 +1,18 @@
+package api;
+
+import db.DBUtil;
 import org.json.JSONException;
 import org.json.JSONObject;
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 
-public class Thread {
+/**
+ * @author d.kildishev
+ */
+public class Post {
     Connection connection = null;
 
-    Thread(Connection connection) {
+    Post(Connection connection) {
         this.connection = connection;
 
         try {
@@ -16,56 +20,27 @@ public class Thread {
         } catch (SQLException e) { }
     }
 
-    public JSONObject close(int id) {
-        return setClosed(id, true);
-    }
-
-    private JSONObject setClosed(int id, boolean isClosed) {
-        JSONObject result = new JSONObject();
-        JSONObject response = new JSONObject();
-
-        int affected = 0;
-
-        try {
-            PreparedStatement stmt = connection.prepareStatement("UPDATE threads SET isClosed = ? WHERE id = ?");
-
-            stmt.setBoolean(1, isClosed);
-            stmt.setInt(2, id);
-
-            affected = stmt.executeUpdate();
-        } catch (SQLException e) { }
-
-        try {
-            if (affected != 0) {
-                result.put("code", 0);
-                result.put("response", response);
-                response.put("thread", id);
-            } else {
-                result.put("code", 1);
-                result.put("message", "thread not found: " + id);
-            }
-        } catch (JSONException e) { }
-
-        return result;
-    }
-
-    public JSONObject create(String forumShortName, String title, String userEmail, String date, String message, String slug, boolean isClosed, boolean isDeleted) {
+    public JSONObject create(String forumShortName, int threadId, String userEmail, String date, String message, boolean isApproved, boolean isHighlighted, boolean isEdited, boolean isSpam, boolean isDeleted, int parent) {
         JSONObject result = new JSONObject();
         JSONObject response = new JSONObject();
 
         long id = 0;
 
         try {
-            PreparedStatement stmt = connection.prepareStatement("INSERT INTO threads (title, slug, message, date, isClosed, isDeleted, forums_short_name, users_email) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
+            //TODO:update posts?? (on add & on delete & on restore)
+            PreparedStatement stmt = connection.prepareStatement("INSERT INTO posts (message, date, isApproved, isHighlighted, isEdited, isSpam, isDeleted, parent, users_email, threads_id, forums_short_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
 
-            stmt.setString(1, title);
-            stmt.setString(2, slug);
-            stmt.setString(3, message);
-            stmt.setString(4, date);
-            stmt.setBoolean(5, isClosed);
-            stmt.setBoolean(6, isDeleted);
-            stmt.setString(7, forumShortName);
-            stmt.setString(8, userEmail);
+            stmt.setString(1, message);
+            stmt.setString(2, date);
+            stmt.setBoolean(3, isApproved);
+            stmt.setBoolean(4, isHighlighted);
+            stmt.setBoolean(5, isEdited);
+            stmt.setBoolean(6, isSpam);
+            stmt.setBoolean(7, isDeleted);
+            stmt.setInt(8, parent);
+            stmt.setString(9, userEmail);
+            stmt.setInt(10, threadId);
+            stmt.setString(11, forumShortName);
 
             stmt.executeUpdate();
             id = DBUtil.getStatementGeneratedId(stmt);
@@ -75,14 +50,16 @@ public class Thread {
             result.put("code", 0);
             result.put("response", response);
             response.put("id", id);
-            response.put("title", title);
-            response.put("slug", slug);
             response.put("message", message);
             response.put("date", date);
-            response.put("isClosed", isClosed);
+            response.put("isApproved", isApproved);
+            response.put("isHighlighted", isHighlighted);
+            response.put("isEdited", isEdited);
+            response.put("isSpam", isSpam);
             response.put("isDeleted", isDeleted);
-            response.put("forum", forumShortName);
             response.put("user", userEmail);
+            response.put("thread", threadId);
+            response.put("forum", forumShortName);
         } catch (JSONException e) { }
 
         return result;
@@ -98,30 +75,31 @@ public class Thread {
                 result.put("response", response);
             } else {
                 result.put("code", 1);
-                result.put("message", "thread not found: " + id);
+                result.put("message", "post not found: " + id);
             }
         } catch (JSONException e) { }
 
         return result;
     }
 
-    public JSONObject list(String clauseField, String clauseValue, String since, int limit, String order, List<String> related) {
+    public JSONObject list(String clauseField, Object clauseValue, String since, int limit, String order, List<String> related) {
         JSONObject result = new JSONObject();
         List<JSONObject> response = new ArrayList<JSONObject>();
         StringBuilder query = new StringBuilder("SELECT ");
 
-        HashMap<String, Class> threadsColumns = new HashMap<String, Class>(){{
+        HashMap<String, Class> postsColumns = new HashMap<String, Class>(){{
             put("id", Integer.class);
-            put("title", String.class);
-            put("slug", String.class);
             put("message", String.class);
             put("date", String.class);
             put("likes", Integer.class);
             put("dislikes", Integer.class);
             put("points", Integer.class);
-            put("isClosed", Boolean.class);
+            put("isApproved", Boolean.class);
+            put("isHighlighted", Boolean.class);
+            put("isEdited", Boolean.class);
+            put("isSpam", Boolean.class);
             put("isDeleted", Boolean.class);
-            put("posts", Integer.class);
+            put("parent", Integer.class);
         }};
 
         HashMap<String, Class> usersColumns = null;
@@ -136,7 +114,29 @@ public class Thread {
                 put("isAnonymous", Boolean.class);
             }};
         } else {
-            threadsColumns.put("users_email", String.class);
+            postsColumns.put("users_email", String.class);
+        }
+
+        HashMap<String, Class> threadsColumns = null;
+
+        if (related != null && related.contains("thread")) {
+            threadsColumns = new HashMap<String, Class>(){{
+                put("id", Integer.class);
+                put("title", String.class);
+                put("slug", String.class);
+                put("message", String.class);
+                put("date", String.class);
+                put("likes", Integer.class);
+                put("dislikes", Integer.class);
+                put("points", Integer.class);
+                put("isClosed", Boolean.class);
+                put("isDeleted", Boolean.class);
+                put("posts", Integer.class);
+                put("forums_short_name", String.class);
+                put("users_email", String.class);
+            }};
+        } else {
+            postsColumns.put("threads_id", Integer.class);
         }
 
         HashMap<String, Class> forumsColumns = null;
@@ -149,14 +149,19 @@ public class Thread {
                 put("users_email", String.class);
             }};
         } else {
-            threadsColumns.put("forums_short_name", String.class);
+            postsColumns.put("forums_short_name", String.class);
         }
 
-        query.append(DBUtil.columnsOfTableToString("threads", threadsColumns.keySet().toArray(new String[threadsColumns.keySet().size()])));
+        query.append(DBUtil.columnsOfTableToString("posts", postsColumns.keySet().toArray(new String[postsColumns.keySet().size()])));
 
         if (usersColumns != null) {
             query.append(", ");
             query.append(DBUtil.columnsOfTableToString("users", usersColumns.keySet().toArray(new String[usersColumns.keySet().size()])));
+        }
+
+        if (threadsColumns != null) {
+            query.append(", ");
+            query.append(DBUtil.columnsOfTableToString("threads", threadsColumns.keySet().toArray(new String[threadsColumns.keySet().size()])));
         }
 
         if (forumsColumns != null) {
@@ -164,36 +169,42 @@ public class Thread {
             query.append(DBUtil.columnsOfTableToString("forums", forumsColumns.keySet().toArray(new String[forumsColumns.keySet().size()])));
         }
 
-        query.append(" FROM threads");
+        query.append(" FROM posts");
 
         if (related != null && related.contains("user")) {
-            query.append(" JOIN users ON threads.users_email = users.email");
+            query.append(" JOIN users ON posts.users_email = users.email");
+        }
+
+        if (related != null && related.contains("thread")) {
+            query.append(" JOIN threads ON posts.threads_id = threads.id");
         }
 
         if (related != null && related.contains("forum")) {
-            query.append(" JOIN forums ON threads.forums_short_name = forums.short_name");
+            query.append(" JOIN forums ON posts.forums_short_name = forums.short_name");
         }
 
-        query.append(" WHERE threads." + clauseField + " = ?");
+        query.append(" WHERE posts." + clauseField + " = ?");
 
         if (since != null) {
-            query.append(" AND threads.date >= ?");
+            query.append(" AND posts.date >= ?");
         }
 
         if (order != null && (order.equals("asc") || order.equals("desc"))) {
-            query.append(" ORDER BY threads.date " + order.toUpperCase());
+            query.append(" ORDER BY posts.date " + order.toUpperCase());
         }
 
         if (limit != 0) {
             query.append(" LIMIT 0, " + limit);
         }
 
-        //System.out.println(query);
-
         try {
             PreparedStatement stmt = connection.prepareStatement(query.toString());
 
-            stmt.setString(1, clauseValue);
+            if (clauseField.equals("forums_short_name") || clauseField.equals("users_email")) {
+                stmt.setString(1, (String)clauseValue);
+            } else if (clauseField.equals("threads_id")) {
+                stmt.setInt(1, (Integer)clauseValue);
+            }
 
             if (since != null) {
                 stmt.setString(2, since);
@@ -204,17 +215,18 @@ public class Thread {
             while (resultSet.next()) {
                 JSONObject obj = new JSONObject();
 
-                for (String column : threadsColumns.keySet()) {
+                for (String column : postsColumns.keySet()) {
                     String name = column;
 
                     if (column.equals("users_email")) {
                         name = "user";
-
+                    } else if (column.equals("threads_id")) {
+                        name = "thread";
                     } else if (column.equals("forums_short_name")) {
                         name = "forum";
                     }
 
-                    DBUtil.jsonPutResultSetColumn(obj, name, resultSet, column, threadsColumns.get(column));
+                    DBUtil.jsonPutResultSetColumn(obj, name, resultSet, column, postsColumns.get(column));
                 }
 
                 if (usersColumns != null) {
@@ -228,6 +240,24 @@ public class Thread {
                     }
 
                     obj.put("user", relatedObj);
+                }
+
+                if (threadsColumns != null) {
+                    JSONObject relatedObj = new JSONObject();
+
+                    for (String column : threadsColumns.keySet()) {
+                        String name = column;
+
+                        if (column.equals("users_email")) {
+                            name = "user";
+                        } else if (column.equals("forums_short_name")) {
+                            name = "forum";
+                        }
+
+                        DBUtil.jsonPutResultSetColumn(relatedObj, name, resultSet, column, threadsColumns.get(column));
+                    }
+
+                    obj.put("thread", relatedObj);
                 }
 
                 if (forumsColumns != null) {
@@ -258,10 +288,6 @@ public class Thread {
         return result;
     }
 
-    public JSONObject open(int id) {
-        return setClosed(id, false);
-    }
-
     public JSONObject remove(int id) {
         return setDeleted(id, true);
     }
@@ -277,7 +303,7 @@ public class Thread {
         int affected = 0;
 
         try {
-            PreparedStatement stmt = connection.prepareStatement("UPDATE threads SET isDeleted = ? WHERE id = ?");
+            PreparedStatement stmt = connection.prepareStatement("UPDATE posts SET isDeleted = ? WHERE id = ?");
 
             stmt.setBoolean(1, isDeleted);
             stmt.setInt(2, id);
@@ -289,67 +315,26 @@ public class Thread {
             if (affected != 0) {
                 result.put("code", 0);
                 result.put("response", response);
-                response.put("thread", id);
+                response.put("post", id);
             } else {
                 result.put("code", 1);
-                result.put("message", "thread not found: " + id);
+                result.put("message", "post not found: " + id);
             }
         } catch (JSONException e) { }
 
         return result;
     }
 
-    public JSONObject subscribe(String userEmail, int id) {
-        JSONObject result = new JSONObject();
-
-        try {
-            PreparedStatement stmt = connection.prepareStatement("INSERT INTO subscriptions (threads_id, users_email) VALUES (?, ?)");
-
-            stmt.setInt(1, id);
-            stmt.setString(2, userEmail);
-
-            stmt.executeUpdate();
-        } catch (SQLException e) { }
-
-        try {
-            result.put("code", 0);
-            result.put("response", jsonObject(connection, id, null));
-        } catch (JSONException e) { }
-
-        return result;
-    }
-
-    public JSONObject unsubscribe(String userEmail, int id) {
-        JSONObject result = new JSONObject();
-
-        try {
-            PreparedStatement stmt = connection.prepareStatement("DELETE FROM subscriptions WHERE threads_id = ? AND users_email = ?");
-
-            stmt.setInt(1, id);
-            stmt.setString(2, userEmail);
-
-            stmt.executeUpdate();
-        } catch (SQLException e) { }
-
-        try {
-            result.put("code", 0);
-            result.put("response", jsonObject(connection, id, null));
-        } catch (JSONException e) { }
-
-        return result;
-    }
-
-    public JSONObject update(int id, String message, String slug) {
+    public JSONObject update(int id, String message) {
         JSONObject result = new JSONObject();
 
         int affected = 0;
 
         try {
-            PreparedStatement stmt = connection.prepareStatement("UPDATE threads SET message = ?, slug = ? WHERE id = ?");
+            PreparedStatement stmt = connection.prepareStatement("UPDATE posts SET message = ? WHERE id = ?");
 
             stmt.setString(1, message);
-            stmt.setString(2, slug);
-            stmt.setInt(3, id);
+            stmt.setInt(2, id);
 
             affected = stmt.executeUpdate();
         } catch (SQLException e) { }
@@ -360,7 +345,7 @@ public class Thread {
                 result.put("response", jsonObject(connection, id, null));
             } else {
                 result.put("code", 1);
-                result.put("message", "thread not found: " + id);
+                result.put("message", "post not found: " + id);
             }
         } catch (JSONException e) { }
 
@@ -374,11 +359,11 @@ public class Thread {
 
         try {
             PreparedStatement stmt = null;
-
+            
             if (vote == 1) {
-                stmt = connection.prepareStatement("UPDATE threads SET likes = likes + 1, points = points + 1 WHERE id = ?");
+                stmt = connection.prepareStatement("UPDATE posts SET likes = likes + 1, points = points + 1 WHERE id = ?");
             } else if (vote == -1) {
-                stmt = connection.prepareStatement("UPDATE threads SET dislikes = dislikes + 1, points = points - 1 WHERE id = ?");
+                stmt = connection.prepareStatement("UPDATE posts SET dislikes = dislikes + 1, points = points - 1 WHERE id = ?");
             }
 
             stmt.setInt(1, id);
@@ -392,7 +377,7 @@ public class Thread {
                 result.put("response", jsonObject(connection, id, null));
             } else {
                 result.put("code", 1);
-                result.put("message", "thread not found: " + id);
+                result.put("message", "post not found: " + id);
             }
         } catch (JSONException e) { }
 
@@ -401,40 +386,46 @@ public class Thread {
 
     public static JSONObject jsonObject(Connection connection, int id, List<String> related) {
         JSONObject jsonObject = null;
-        ResultSet thread = null;
+        ResultSet post = null;
 
         try {
-            PreparedStatement stmt = connection.prepareStatement("SELECT id, title, slug, message, date, likes, dislikes, points, isClosed, isDeleted, posts FROM threads WHERE id = ?");
+            PreparedStatement stmt = connection.prepareStatement("SELECT id, message, date, likes, dislikes, points, isApproved, isHighlighted, isEdited, isSpam, isDeleted, parent, users_email, threads_id, forums_short_name FROM posts WHERE id = ?");
 
             stmt.setInt(1, id);
 
-            thread = DBUtil.getSingleResult(stmt);
+            post = DBUtil.getSingleResult(stmt);
         } catch (SQLException e) { }
 
-        if (thread != null) {
+        if (post != null) {
             try {
                 jsonObject = new JSONObject();
 
                 jsonObject.put("id", id);
-                jsonObject.put("title", thread.getString("title"));
-                jsonObject.put("slug", thread.getString("slug"));
-                jsonObject.put("message", thread.getString("message"));
-                jsonObject.put("date", thread.getString("date"));
-                jsonObject.put("likes", thread.getInt("likes"));
-                jsonObject.put("dislikes", thread.getInt("dislikes"));
-                jsonObject.put("points", thread.getInt("points"));
-                jsonObject.put("isClosed", thread.getBoolean("isClosed"));
-                jsonObject.put("isDeleted", thread.getBoolean("isDeleted"));
-                jsonObject.put("posts", thread.getInt("posts"));
-                jsonObject.put("forum",  thread.getString("forums_short_name"));
-                jsonObject.put("user",  thread.getString("users_email"));
+                jsonObject.put("message", post.getString("message"));
+                jsonObject.put("date", post.getString("date"));
+                jsonObject.put("likes", post.getInt("likes"));
+                jsonObject.put("dislikes", post.getInt("dislikes"));
+                jsonObject.put("points", post.getInt("points"));
+                jsonObject.put("isApproved", post.getBoolean("isApproved"));
+                jsonObject.put("isHighlighted", post.getBoolean("isHighlighted"));
+                jsonObject.put("isEdited", post.getBoolean("isEdited"));
+                jsonObject.put("isSpam", post.getBoolean("isSpam"));
+                jsonObject.put("isDeleted", post.getBoolean("isDeleted"));
+                jsonObject.put("parent", post.getInt("parent"));
+                jsonObject.put("user", post.getString("users_email"));
+                jsonObject.put("thread", post.getInt("threads_id"));
+                jsonObject.put("forum", post.getString("forums_short_name"));
 
                 if (related != null && related.contains("user")) {
-                    jsonObject.put("forum", Forum.jsonObject(connection, thread.getString("forums_short_name"), null));
+                    jsonObject.put("user", User.jsonObject(connection, post.getString("users_email")));
                 }
 
-                if (related != null && related.contains("user")) {
-                    jsonObject.put("user", User.jsonObject(connection, thread.getString("users_email")));
+                if (related != null && related.contains("forum")) {
+                    jsonObject.put("forum", Forum.jsonObject(connection, post.getString("forums_short_name"), null));
+                }
+
+                if (related != null && related.contains("thread")) {
+                    jsonObject.put("thread", Thread.jsonObject(connection, post.getInt("threads_id"), null));
                 }
             } catch (JSONException | SQLException e) { }
         }
@@ -442,5 +433,3 @@ public class Thread {
         return jsonObject;
     }
 }
-
-

@@ -61,4 +61,12 @@ public class DBUtil {
             e.printStackTrace();
         }
     }
+
+    public static Object jsonNullable(String value) {
+        return (value.equals("null")) ? JSONObject.NULL : value;
+    }
+
+    public static Object jsonNullable(int value) {
+        return (value == 0) ? JSONObject.NULL : value;
+    }
 }

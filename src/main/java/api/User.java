@@ -100,7 +100,7 @@ public class User {
         query.append(" GROUP BY " + DBUtil.columnsOfTableToString("users", usersColumns.keySet().toArray(new String[usersColumns.keySet().size()])));
 
         if (order != null && (order.equals("asc") || order.equals("desc"))) {
-            query.append(" ORDER BY posts.date " + order.toUpperCase());
+            query.append(" ORDER BY users.id " + order.toUpperCase());
         }
 
         if (limit != 0) {
@@ -128,6 +128,9 @@ public class User {
                     obj.put("subscriptions", User.subscriptions(connection, resultSet.getString("users.email")));
                 }
 
+                obj.put("username", DBUtil.jsonNullable(obj.getString("username")));
+                obj.put("about", DBUtil.jsonNullable(obj.getString("about")));
+                obj.put("name", DBUtil.jsonNullable(obj.getString("name")));
                 response.add(obj);
             }
 
@@ -163,11 +166,11 @@ public class User {
     }
 
     public JSONObject listFollowers(String userEmail, int limit, String order, int since_id) {
-        return listFollowersWithArguments("SELECT id, username, about, name, email, isAnonymous FROM followers JOIN users ON email = users_email_following WHERE email = ?", userEmail, limit, order, since_id);
+        return listFollowersWithArguments("SELECT id, username, about, name, email, isAnonymous FROM followers JOIN users ON email = users_email_follower WHERE users_email_following = ?", userEmail, limit, order, since_id);
     }
 
     public JSONObject listFollowing(String userEmail, int limit, String order, int since_id) {
-        return listFollowersWithArguments("SELECT id, username, about, name, email, isAnonymous FROM followers JOIN users ON email = users_email_follower WHERE email = ?", userEmail, limit, order, since_id);
+        return listFollowersWithArguments("SELECT id, username, about, name, email, isAnonymous FROM followers JOIN users ON email = users_email_following WHERE users_email_follower = ?", userEmail, limit, order, since_id);
     }
 
     private JSONObject listFollowersWithArguments(String initialQuery, String userEmail, int limit, String order, int since_id) {
@@ -213,14 +216,14 @@ public class User {
                 JSONObject jsonObject = new JSONObject();
 
                 jsonObject.put("id", user.getInt("id"));
-                jsonObject.put("username", user.getString("username"));
-                jsonObject.put("about", user.getString("about"));
-                jsonObject.put("name", user.getString("name"));
+                jsonObject.put("username", DBUtil.jsonNullable(user.getString("username")));
+                jsonObject.put("about", DBUtil.jsonNullable(user.getString("about")));
+                jsonObject.put("name", DBUtil.jsonNullable(user.getString("name")));
                 jsonObject.put("email", user.getString("email"));
-                jsonObject.put("isAnonymous", user.getString("isAnonymous"));
-                jsonObject.put("followers", followers(connection, user.getString("name")));
-                jsonObject.put("following", followings(connection, user.getString("name")));
-                jsonObject.put("subscriptions", subscriptions(connection, user.getString("name")));
+                jsonObject.put("isAnonymous", user.getBoolean("isAnonymous"));
+                jsonObject.put("followers", followers(connection, user.getString("email")));
+                jsonObject.put("following", followings(connection, user.getString("email")));
+                jsonObject.put("subscriptions", subscriptions(connection, user.getString("email")));
 
                 response.add(jsonObject);
             }
@@ -297,11 +300,11 @@ public class User {
                 jsonObject = new JSONObject();
 
                 jsonObject.put("id", user.getInt("id"));
-                jsonObject.put("username", user.getString("username"));
-                jsonObject.put("about", user.getString("about"));
-                jsonObject.put("name", user.getString("name"));
+                jsonObject.put("username", DBUtil.jsonNullable(user.getString("username")));
+                jsonObject.put("about", DBUtil.jsonNullable(user.getString("about")));
+                jsonObject.put("name", DBUtil.jsonNullable(user.getString("name")));
                 jsonObject.put("email", user.getString("email"));
-                jsonObject.put("isAnonymous", user.getString("isAnonymous"));
+                jsonObject.put("isAnonymous", user.getBoolean("isAnonymous"));
                 jsonObject.put("followers", followers(connection, userEmail));
                 jsonObject.put("following", followings(connection, userEmail));
                 jsonObject.put("subscriptions", subscriptions(connection, userEmail));

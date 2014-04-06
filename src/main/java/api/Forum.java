@@ -36,6 +36,7 @@ public class Forum {
             stmt.executeUpdate();
             id = DBUtil.getStatementGeneratedId(stmt);
         } catch (SQLException e) {
+            e.printStackTrace();
             return details(shortName, null);
         }
 

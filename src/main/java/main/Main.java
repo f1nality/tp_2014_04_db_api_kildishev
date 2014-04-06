@@ -26,11 +26,8 @@ public class Main {
         Frontend frontend = new Frontend();
         context.addServlet(new ServletHolder(frontend), "/*");
 
-        HandlerList handlers = new HandlerList();
-        handlers.setHandlers(new Handler[]{context});
-
-        Server server = new Server(8080);
-        server.setHandler(handlers);
+        Server server = new Server(80);
+        server.setHandler(context);
 
         QueuedThreadPool threadPool = (QueuedThreadPool)server.getThreadPool();
         threadPool.setMinThreads(10);

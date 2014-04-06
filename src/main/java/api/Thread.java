@@ -221,16 +221,21 @@ public class Thread {
                     DBUtil.jsonPutResultSetColumn(obj, name, resultSet, column, threadsColumns.get(column));
                 }
 
+                obj.put("date", obj.getString("date").split("\\.")[0]);
+
                 if (usersColumns != null) {
                     JSONObject relatedObj = new JSONObject();
 
                     for (String column : usersColumns.keySet()) {
-                        DBUtil.jsonPutResultSetColumn(relatedObj, column, resultSet, column, usersColumns.get(column));
+                        DBUtil.jsonPutResultSetColumn(relatedObj, column, resultSet, "users." + column, usersColumns.get(column));
                         relatedObj.put("followers", User.followers(connection, resultSet.getString("users.email")));
                         relatedObj.put("following", User.followings(connection, resultSet.getString("users.email")));
                         relatedObj.put("subscriptions", User.subscriptions(connection, resultSet.getString("users.email")));
                     }
 
+                    relatedObj.put("username", DBUtil.jsonNullable(relatedObj.getString("username")));
+                    relatedObj.put("about", DBUtil.jsonNullable(relatedObj.getString("about")));
+                    relatedObj.put("name", DBUtil.jsonNullable(relatedObj.getString("name")));
                     obj.put("user", relatedObj);
                 }
 
@@ -408,7 +413,7 @@ public class Thread {
         ResultSet thread = null;
 
         try {
-            PreparedStatement stmt = connection.prepareStatement("SELECT id, title, slug, message, date, likes, dislikes, points, isClosed, isDeleted, posts FROM threads WHERE id = ?");
+            PreparedStatement stmt = connection.prepareStatement("SELECT id, title, slug, message, date, likes, dislikes, points, isClosed, isDeleted, posts, forums_short_name, users_email FROM threads WHERE id = ?");
 
             stmt.setInt(1, id);
 
@@ -423,7 +428,7 @@ public class Thread {
                 jsonObject.put("title", thread.getString("title"));
                 jsonObject.put("slug", thread.getString("slug"));
                 jsonObject.put("message", thread.getString("message"));
-                jsonObject.put("date", thread.getString("date"));
+                jsonObject.put("date", thread.getString("date").split("\\.")[0]);
                 jsonObject.put("likes", thread.getInt("likes"));
                 jsonObject.put("dislikes", thread.getInt("dislikes"));
                 jsonObject.put("points", thread.getInt("points"));
@@ -433,14 +438,17 @@ public class Thread {
                 jsonObject.put("forum",  thread.getString("forums_short_name"));
                 jsonObject.put("user",  thread.getString("users_email"));
 
-                if (related != null && related.contains("user")) {
-                    jsonObject.put("forum", Forum.jsonObject(connection, thread.getString("forums_short_name"), null));
+                if (related != null && related.contains("forum")) {
+                    JSONObject forum = Forum.jsonObject(connection, thread.getString("forums_short_name"), null);
+                    jsonObject.put("forum", forum);
                 }
 
                 if (related != null && related.contains("user")) {
                     jsonObject.put("user", User.jsonObject(connection, thread.getString("users_email")));
                 }
-            } catch (JSONException | SQLException e) { }
+            } catch (JSONException | SQLException e) {
+                e.printStackTrace();
+            }
         }
 
         return jsonObject;

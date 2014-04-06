@@ -3,6 +3,9 @@ package api;
 import db.DBUtil;
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.*;
 
 /**
@@ -19,6 +22,20 @@ public class Api {
         forum = new Forum(DBUtil.openConnection());
         thread = new Thread(DBUtil.openConnection());
         post = new Post(DBUtil.openConnection());
+
+        try {
+            Connection connection = DBUtil.openConnection();
+            connection.setAutoCommit(true);
+
+            connection.prepareStatement("DELETE FROM followers").executeUpdate();
+            connection.prepareStatement("DELETE FROM forums").executeUpdate();
+            connection.prepareStatement("DELETE FROM posts").executeUpdate();
+            connection.prepareStatement("DELETE FROM subscriptions").executeUpdate();
+            connection.prepareStatement("DELETE FROM threads").executeUpdate();
+            connection.prepareStatement("DELETE FROM users").executeUpdate();
+
+            connection.close();
+        } catch (SQLException e) { }
     }
 
     private JSONObject forumMethod(String method, Map<String, String> apiParameters) {
@@ -27,7 +44,7 @@ public class Api {
 
         switch (method) {
             case "create":
-                result = forum.create(apiParameters.get("name"), apiParameters.get("short_name"), apiParameters.get("userEmail"));
+                result = forum.create(apiParameters.get("name"), apiParameters.get("short_name"), apiParameters.get("user"));
                 break;
             case "details":
                 related = (apiParameters.get("related") != null ? Arrays.asList(apiParameters.get("related").split(",")) : null);
@@ -41,10 +58,10 @@ public class Api {
                 String field = (apiParameters.get("forum") != null) ? "forums_short_name" : "users_email";
                 String value = (apiParameters.get("forum") != null) ? apiParameters.get("forum") : apiParameters.get("user");
                 related = (apiParameters.get("related") != null ? Arrays.asList(apiParameters.get("related").split(",")) : null);
-                result = thread.list(field, value, apiParameters.get("since"), (apiParameters.get("limit") != null ? Integer.parseInt(apiParameters.get("since")) : 0), apiParameters.get("order"), related);
+                result = thread.list(field, value, apiParameters.get("since"), (apiParameters.get("limit") != null ? Integer.parseInt(apiParameters.get("limit")) : 0), apiParameters.get("order"), related);
                 break;
             case "listUsers":
-                result = user.list("forums_short_name", apiParameters.get("forum"), (apiParameters.get("since_id") != null ? Integer.parseInt(apiParameters.get("since_id")) : 0), (apiParameters.get("limit") != null ? Integer.parseInt(apiParameters.get("since")) : 0), apiParameters.get("order"));
+                result = user.list("forums_short_name", apiParameters.get("forum"), (apiParameters.get("since_id") != null ? Integer.parseInt(apiParameters.get("since_id")) : 0), (apiParameters.get("limit") != null ? Integer.parseInt(apiParameters.get("limit")) : 0), apiParameters.get("order"));
                 break;
         }
 
@@ -62,7 +79,8 @@ public class Api {
                     Boolean isEdited = (apiParameters.get("isEdited") != null) ? Boolean.parseBoolean(apiParameters.get("isEdited")) : true;
                     Boolean isSpam = (apiParameters.get("isSpam") != null) ? Boolean.parseBoolean(apiParameters.get("isSpam")) : false;
                     Boolean isDeleted = (apiParameters.get("isDeleted") != null) ? Boolean.parseBoolean(apiParameters.get("isDeleted")) : false;
-                    result = post.create(apiParameters.get("forum"), Integer.parseInt(apiParameters.get("thread")), apiParameters.get("user"), apiParameters.get("date"), apiParameters.get("message"), isApproved, isHighlighted, isEdited, isSpam, isDeleted, 0);
+                    Integer parent = (apiParameters.get("parent") != null) ? Integer.parseInt(apiParameters.get("parent")) : 0;
+                    result = post.create(apiParameters.get("forum"), Integer.parseInt(apiParameters.get("thread")), apiParameters.get("user"), apiParameters.get("date"), apiParameters.get("message"), isApproved, isHighlighted, isEdited, isSpam, isDeleted, parent);
                     break;
                 case "details":
                     related = (apiParameters.get("related") != null ? Arrays.asList(apiParameters.get("related").split(",")) : null);
@@ -192,16 +210,16 @@ public class Api {
 
         //TODO:method check
         switch (entity) {
-            case "Forum":
+            case "forum":
                 result = forumMethod(method, apiParameters);
                 break;
-            case "Post":
+            case "post":
                 result = postMethod(method, apiParameters);
                 break;
-            case "User":
+            case "user":
                 result = userMethod(method, apiParameters);
                 break;
-            case "Thread":
+            case "thread":
                 result = threadMethod(method, apiParameters);
                 break;
         }

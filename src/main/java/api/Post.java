@@ -27,7 +27,6 @@ public class Post {
         long id = 0;
 
         try {
-            //TODO:update posts?? (on add & on delete & on restore)
             PreparedStatement stmt = connection.prepareStatement("INSERT INTO posts (message, date, isApproved, isHighlighted, isEdited, isSpam, isDeleted, parent, users_email, threads_id, forums_short_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
 
             stmt.setString(1, message);
@@ -44,6 +43,14 @@ public class Post {
 
             stmt.executeUpdate();
             id = DBUtil.getStatementGeneratedId(stmt);
+        } catch (SQLException e) { }
+
+        try {
+            PreparedStatement stmt = connection.prepareStatement("UPDATE threads SET posts = posts + 1 WHERE id = ?");
+
+            stmt.setInt(1, threadId);
+
+            stmt.executeUpdate();
         } catch (SQLException e) { }
 
         try {
@@ -229,16 +236,22 @@ public class Post {
                     DBUtil.jsonPutResultSetColumn(obj, name, resultSet, column, postsColumns.get(column));
                 }
 
+                obj.put("date", obj.getString("date").split("\\.")[0]);
+                obj.put("parent", DBUtil.jsonNullable(obj.getInt("parent")));
+
                 if (usersColumns != null) {
                     JSONObject relatedObj = new JSONObject();
 
                     for (String column : usersColumns.keySet()) {
-                        DBUtil.jsonPutResultSetColumn(relatedObj, column, resultSet, column, usersColumns.get(column));
+                        DBUtil.jsonPutResultSetColumn(relatedObj, column, resultSet, "users." + column, usersColumns.get(column));
                         relatedObj.put("followers", User.followers(connection, resultSet.getString("users.email")));
                         relatedObj.put("following", User.followings(connection, resultSet.getString("users.email")));
                         relatedObj.put("subscriptions", User.subscriptions(connection, resultSet.getString("users.email")));
                     }
 
+                    relatedObj.put("username", DBUtil.jsonNullable(relatedObj.getString("username")));
+                    relatedObj.put("about", DBUtil.jsonNullable(relatedObj.getString("about")));
+                    relatedObj.put("name", DBUtil.jsonNullable(relatedObj.getString("name")));
                     obj.put("user", relatedObj);
                 }
 
@@ -254,9 +267,10 @@ public class Post {
                             name = "forum";
                         }
 
-                        DBUtil.jsonPutResultSetColumn(relatedObj, name, resultSet, column, threadsColumns.get(column));
+                        DBUtil.jsonPutResultSetColumn(relatedObj, name, resultSet, "threads." + column, threadsColumns.get(column));
                     }
 
+                    relatedObj.put("date", relatedObj.getString("date").split("\\.")[0]);
                     obj.put("thread", relatedObj);
                 }
 
@@ -402,7 +416,7 @@ public class Post {
 
                 jsonObject.put("id", id);
                 jsonObject.put("message", post.getString("message"));
-                jsonObject.put("date", post.getString("date"));
+                jsonObject.put("date", post.getString("date").split("\\.")[0]);
                 jsonObject.put("likes", post.getInt("likes"));
                 jsonObject.put("dislikes", post.getInt("dislikes"));
                 jsonObject.put("points", post.getInt("points"));
@@ -411,7 +425,7 @@ public class Post {
                 jsonObject.put("isEdited", post.getBoolean("isEdited"));
                 jsonObject.put("isSpam", post.getBoolean("isSpam"));
                 jsonObject.put("isDeleted", post.getBoolean("isDeleted"));
-                jsonObject.put("parent", post.getInt("parent"));
+                jsonObject.put("parent", DBUtil.jsonNullable(post.getInt("parent")));
                 jsonObject.put("user", post.getString("users_email"));
                 jsonObject.put("thread", post.getInt("threads_id"));
                 jsonObject.put("forum", post.getString("forums_short_name"));

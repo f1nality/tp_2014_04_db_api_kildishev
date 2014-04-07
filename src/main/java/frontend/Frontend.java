@@ -34,7 +34,7 @@ public class Frontend extends HttpServlet {
     }
 
     private void parseApiRequest(HttpServletRequest httpRequest, HttpServletResponse httpResponse, HttpMethod httpMethod) {
-        Pattern p = Pattern.compile("/db/api/([^/]+)/([\\w]+)/([\\w]+)/");
+        Pattern p = Pattern.compile("/db/api/([\\w]+)/([\\w]+)/");
         Matcher m = p.matcher(httpRequest.getRequestURI());
 
         if (!m.matches()) {
@@ -45,8 +45,8 @@ public class Frontend extends HttpServlet {
             return;
         }
 
-        String entity = m.group(2);
-        String method = m.group(3);
+        String entity = m.group(1);
+        String method = m.group(2);
 
         doApiMethod(httpRequest, httpResponse, httpMethod, entity, method);
     }

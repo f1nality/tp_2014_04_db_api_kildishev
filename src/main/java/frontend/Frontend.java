@@ -34,12 +34,27 @@ public class Frontend extends HttpServlet {
     }
 
     private void parseApiRequest(HttpServletRequest httpRequest, HttpServletResponse httpResponse, HttpMethod httpMethod) {
-        Pattern p = Pattern.compile("/db/api/([\\w]+)/([\\w]+)/");
-        Matcher m = p.matcher(httpRequest.getRequestURI());
+        if (!httpRequest.getRequestURI().startsWith("/db/api/")) {
+            try {
+                httpResponse.getWriter().write("not api request");
+            } catch (IOException e) { }
+
+            return;
+        }
+
+        String apiRequestURI = httpRequest.getRequestURI().substring(8);
+
+        if (apiRequestURI.equals("clear")) {
+            api.truncateDB();
+            return;
+        }
+
+        Pattern p = Pattern.compile("([\\w]+)/([\\w]+)/");
+        Matcher m = p.matcher(apiRequestURI);
 
         if (!m.matches()) {
             try {
-                httpResponse.getWriter().write("not api request");
+                httpResponse.getWriter().write("bad api request");
             } catch (IOException e) { }
 
             return;
@@ -72,7 +87,6 @@ public class Frontend extends HttpServlet {
                 while (iterator.hasNext()) {
                     String key = iterator.next();
 
-                    //parameters.put(key, bodyJson.getString(key));
                     String value = bodyJson.getString(key);
                     parameters.put(key, parseApiRequestArray(value));
                 }
@@ -81,8 +95,6 @@ public class Frontend extends HttpServlet {
             Map<String, String[]> getParameters = httpRequest.getParameterMap();
 
             for (String key : getParameters.keySet()) {
-                //parameters.put(key, StringUtils.join(getParameters.get(key), ","));
-
                 String value = getParameters.get(key)[0];
                 parameters.put(key, parseApiRequestArray(value));
             }
@@ -133,7 +145,6 @@ public class Frontend extends HttpServlet {
         String response = makeUnicodeCharactersEscaped(result.toString());
 
         try {
-
             httpResponse.getWriter().write(response);
         } catch (IOException e) { }
 

@@ -14,7 +14,7 @@ public class DBUtil {
         Connection connection = null;
 
         try {
-            connection = DriverManager.getConnection("jdbc:mysql://F1NAL-MOBILE:3306/forums_db", "root", "");
+            connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/forums_db", "login", "password");
         } catch (SQLException e) { }
 
         return connection;

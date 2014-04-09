@@ -23,6 +23,10 @@ public class Api {
         thread = new Thread(DBUtil.openConnection());
         post = new Post(DBUtil.openConnection());
 
+        truncateDB();
+    }
+
+    public void truncateDB() {
         try {
             Connection connection = DBUtil.openConnection();
             connection.setAutoCommit(true);

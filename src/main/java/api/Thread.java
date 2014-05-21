@@ -14,12 +14,8 @@ import java.util.List;
 public class Thread {
     Connection connection = null;
 
-    Thread(Connection connection) {
+    public void setConnection(Connection connection) {
         this.connection = connection;
-
-        try {
-            connection.setAutoCommit(true);
-        } catch (SQLException e) { }
     }
 
     public JSONObject close(int id) {

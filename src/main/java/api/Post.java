@@ -12,12 +12,8 @@ import java.util.*;
 public class Post {
     Connection connection = null;
 
-    Post(Connection connection) {
+    public void setConnection(Connection connection) {
         this.connection = connection;
-
-        try {
-            connection.setAutoCommit(true);
-        } catch (SQLException e) { }
     }
 
     public JSONObject create(String forumShortName, int threadId, String userEmail, String date, String message, boolean isApproved, boolean isHighlighted, boolean isEdited, boolean isSpam, boolean isDeleted, int parent) {

@@ -45,7 +45,8 @@ public class Frontend extends HttpServlet {
         String apiRequestURI = httpRequest.getRequestURI().substring(8);
 
         if (apiRequestURI.equals("clear")) {
-            api.truncateDB();
+            //api.truncateDB();
+            api.method("clear", null, null);
             return;
         }
 

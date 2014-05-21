@@ -14,12 +14,8 @@ import java.util.List;
 public class User {
     Connection connection = null;
 
-    User(Connection connection) {
+    public void setConnection(Connection connection) {
         this.connection = connection;
-
-        try {
-            connection.setAutoCommit(true);
-        } catch (SQLException e) { }
     }
 
     public JSONObject create(String username, String about, String name, String email, boolean isAnonymous) {
@@ -90,7 +86,16 @@ public class User {
 
         query.append(DBUtil.columnsOfTableToString("users", usersColumns.keySet().toArray(new String[usersColumns.keySet().size()])));
 
+        query.append(", GROUP_CONCAT(DISTINCT following.users_email_following) AS following");
+        query.append(", GROUP_CONCAT(DISTINCT followers.users_email_follower) AS followers");
+        query.append(", GROUP_CONCAT(DISTINCT subscriptions.threads_id) AS subscriptions");
+
         query.append(" FROM users JOIN posts ON users.email = posts.users_email");
+
+        query.append(" LEFT JOIN followers AS following ON following.users_email_follower = users.email" +
+                " LEFT JOIN followers AS followers ON followers.users_email_following = users.email" +
+                " LEFT JOIN subscriptions ON subscriptions.users_email = users.email");
+
         query.append(" WHERE posts." + clauseField + " = ?");
 
         if (since != 0) {
@@ -123,11 +128,18 @@ public class User {
 
                 for (String column : usersColumns.keySet()) {
                     DBUtil.jsonPutResultSetColumn(obj, column, resultSet, column, usersColumns.get(column));
-                    obj.put("followers", User.followers(connection, resultSet.getString("users.email")));
-                    obj.put("following", User.followings(connection, resultSet.getString("users.email")));
-                    obj.put("subscriptions", User.subscriptions(connection, resultSet.getString("users.email")));
+                    //obj.put("followers", User.followers(connection, resultSet.getString("users.email")));
+                    //obj.put("following", User.followings(connection, resultSet.getString("users.email")));
+                    //obj.put("subscriptions", User.subscriptions(connection, resultSet.getString("users.email")));
                 }
 
+                String[] following = (resultSet.getString("following") != null) ? resultSet.getString("following").split(",") : new String[] { };
+                String[] followers = (resultSet.getString("followers") != null) ? resultSet.getString("followers").split(",") : new String[] { };
+                String[] subscriptions = (resultSet.getString("subscriptions") != null) ? resultSet.getString("subscriptions").split(",") : new String[] { };
+
+                obj.put("following", following);
+                obj.put("followers", followers);
+                obj.put("subscriptions", subscriptions);
                 obj.put("username", DBUtil.jsonNullable(obj.getString("username")));
                 obj.put("about", DBUtil.jsonNullable(obj.getString("about")));
                 obj.put("name", DBUtil.jsonNullable(obj.getString("name")));

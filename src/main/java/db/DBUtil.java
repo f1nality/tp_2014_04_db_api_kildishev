@@ -4,20 +4,75 @@ import org.apache.commons.lang3.StringUtils;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import javax.naming.InitialContext;
+import javax.naming.NamingException;
+import javax.sql.DataSource;
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Properties;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * @author d.kildishev
  */
 public class DBUtil {
+    private static ConcurrentLinkedQueue<Connection> connectionPool = new ConcurrentLinkedQueue<>();
+
     public static Connection openConnection() {
+
         Connection connection = null;
 
         try {
-            connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/forums_db", "login", "password");
-        } catch (SQLException e) { }
+            connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/forums_db", "root", "");
+            connection.setAutoCommit(true);
+        } catch (SQLException e) {
+            System.out.println("Can't create connection");
+            e.printStackTrace();
+        }
+
 
         return connection;
+    }
+
+    public static void createConnectionPool(int connections) {
+        connectionPool.clear();
+
+        for (int i = 0; i < connections; ++i) {
+            Connection connection = openConnection();
+
+            if (connection != null) {
+                connectionPool.add(connection);
+            }
+        }
+    }
+
+    public static Connection getPoolConnection() {
+        while (connectionPool.size() == 0) {
+            try {
+                Thread.sleep(10);
+            } catch (InterruptedException e) { }
+        }
+
+        return connectionPool.poll();
+    }
+
+    public static void freePoolConnection(Connection connection) {
+        connectionPool.add(connection);
+    }
+
+    public static void truncate(Connection connection) {
+        try {
+            connection.prepareStatement("DELETE FROM followers").executeUpdate();
+            connection.prepareStatement("DELETE FROM forums").executeUpdate();
+            connection.prepareStatement("DELETE FROM posts").executeUpdate();
+            connection.prepareStatement("DELETE FROM subscriptions").executeUpdate();
+            connection.prepareStatement("DELETE FROM threads").executeUpdate();
+            connection.prepareStatement("DELETE FROM users").executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
     
     public static long getStatementGeneratedId(PreparedStatement stmt) throws SQLException {

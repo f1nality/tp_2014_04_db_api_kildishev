@@ -18,28 +18,14 @@ public class Api {
     Post post = null;
 
     public Api() {
-        user = new User(DBUtil.openConnection());
-        forum = new Forum(DBUtil.openConnection());
-        thread = new Thread(DBUtil.openConnection());
-        post = new Post(DBUtil.openConnection());
+        user = new User();
+        forum = new Forum();
+        thread = new Thread();
+        post = new Post();
 
-        truncateDB();
-    }
+        DBUtil.createConnectionPool(100);
 
-    public void truncateDB() {
-        try {
-            Connection connection = DBUtil.openConnection();
-            connection.setAutoCommit(true);
-
-            connection.prepareStatement("DELETE FROM followers").executeUpdate();
-            connection.prepareStatement("DELETE FROM forums").executeUpdate();
-            connection.prepareStatement("DELETE FROM posts").executeUpdate();
-            connection.prepareStatement("DELETE FROM subscriptions").executeUpdate();
-            connection.prepareStatement("DELETE FROM threads").executeUpdate();
-            connection.prepareStatement("DELETE FROM users").executeUpdate();
-
-            connection.close();
-        } catch (SQLException e) { }
+        method("clear", null, null);
     }
 
     private JSONObject forumMethod(String method, Map<String, String> apiParameters) {
@@ -212,8 +198,18 @@ public class Api {
     public JSONObject method(String entity, String method, Map<String, String> apiParameters) {
         JSONObject result = null;
 
-        //TODO:method check
+        Connection connection = DBUtil.getPoolConnection();
+
+        forum.setConnection(connection);
+        post.setConnection(connection);
+        user.setConnection(connection);
+        thread.setConnection(connection);
+
         switch (entity) {
+            case "clear":
+                DBUtil.truncate(connection);
+                result = new JSONObject();
+                break;
             case "forum":
                 result = forumMethod(method, apiParameters);
                 break;
@@ -227,81 +223,9 @@ public class Api {
                 result = threadMethod(method, apiParameters);
                 break;
         }
-/*
-        if (entity.equals("Forum")) {
-            if (method.equals("create")) {
-                result = forum.create("api.Forum With Sufficiently Large Name", "forumwithsufficientlylargename", "example@mail.ru");
-            } else if (method.equals("details")) {
-                result = forum.details("forumwithsufficientlylargename", Arrays.asList("user"));
-            } else if (method.equals("listPosts")) {
-                result = post.list("forums_short_name", "forumwithsufficientlylargename", null, 500, "desc", Arrays.asList("user", "forum", "thread"));
-            } else if (method.equals("listThreads")) {
-                result = thread.list("forums_short_name", "forumwithsufficientlylargename", null, 500, "desc", Arrays.asList("user", "forum"));
-            } else if (method.equals("listUsers")) {
-                result = user.list("forums_short_name", "forumwithsufficientlylargename", 1, 500, "desc");
-            }
-        } else if (entity.equals("Post")) {
-            if (method.equals("create")) {
-                result = post.create("forumwithsufficientlylargename", 8, "example@mail.ru", "2014-01-01 00:00:01", "my message 1", false, true, true, false, false, 0);
-            } else if (method.equals("details")) {
-                result = post.details(4, Arrays.asList("user", "thread", "forum"));
-            } else if (method.equals("list")) {
-                result = post.list("forums_short_name", "forumwithsufficientlylargename", null, 500, "desc", Arrays.asList("user", "thread", "forum"));
-            } else if (method.equals("remove")) {
-                result = post.remove(8);
-            } else if (method.equals("restore")) {
-                result = post.restore(8);
-            } else if (method.equals("update")) {
-                result = post.update(8, "new message");
-            } else if (method.equals("vote")) {
-                result = post.vote(8, -1);
-            }
-        } else if (entity.equals("User")) {
-            if (method.equals("create")) {
-                result = user.create("user1", "hello im user1", "user", "example@mail.ru", false);
-            } else if (method.equals("details")) {
-                result = user.details("example@mail.ru1");
-            } else if (method.equals("follow")) {
-                result = user.follow("example@mail.ru", "example2@mail.ru");
-            } else if (method.equals("listFollowers")) {
-                result = user.listFollowers("example@mail.ru", 0, "desc", 0);
-            } else if (method.equals("listFollowing")) {
-                result = user.listFollowing("example@mail.ru", 0, "desc", 0);
-            } else if (method.equals("listPosts")) {
-                result = post.list("users_email", "example@mail.ru", null, 500, "desc", null);
-            } else if (method.equals("unfollow")) {
-                result = user.unfollow("example@mail.ru", "example2@mail.ru");
-            } else if (method.equals("updateProfile")) {
-                result = user.updateProfile("example@mail.ru", "new about", "new name");
-            }
-        } else if (entity.equals("Thread")) {
-            if (method.equals("close")) {
-                result = thread.close(1);
-            } else if (method.equals("create")) {
-                result = thread.create("forumwithsufficientlylargename", "api.Thread With Sufficiently Large Title", "example@mail.ru", "2014-01-01 00:00:01", "hey hey hey hey!", "Threadwithsufficientlylargetitle", false, false);
-            } else if (method.equals("details")) {
-                result = thread.details(1, null);
-            } else if (method.equals("list")) {
-                result = thread.list("forums_short_name", "forumwithsufficientlylargename", null, 500, "desc", Arrays.asList("user", "forum"));
-            } else if (method.equals("listPosts")) {
-                result = post.list("threads_id", 8, null, 500, "desc", null);
-            } else if (method.equals("open")) {
-                result = thread.open(1);
-            } else if (method.equals("remove")) {
-                result = thread.remove(1);
-            } else if (method.equals("restore")) {
-                result = thread.restore(1);
-            } else if (method.equals("subscribe")) {
-                result = thread.subscribe("example@mail.ru", 1);
-            } else if (method.equals("unsubscribe")) {
-                result = thread.unsubscribe("example@mail.ru", 1);
-            } else if (method.equals("update")) {
-                result = thread.update(1, "new thread message", "new slug");
-            } else if (method.equals("vote")) {
-                result = thread.vote(1, -1);
-            }
-        }
-*/
+
+        DBUtil.freePoolConnection(connection);
+        
         if (result == null) {
             result = new JSONObject();
 

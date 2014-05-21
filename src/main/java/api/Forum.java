@@ -12,12 +12,8 @@ import java.util.List;
 public class Forum {
     Connection connection = null;
 
-    Forum(Connection connection) {
+    public void setConnection(Connection connection) {
         this.connection = connection;
-
-        try {
-            connection.setAutoCommit(true);
-        } catch (SQLException e) { }
     }
 
     public JSONObject create(String name, String shortName, String userEmail) {

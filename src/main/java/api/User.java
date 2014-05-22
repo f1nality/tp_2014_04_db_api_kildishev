@@ -128,9 +128,6 @@ public class User {
 
                 for (String column : usersColumns.keySet()) {
                     DBUtil.jsonPutResultSetColumn(obj, column, resultSet, column, usersColumns.get(column));
-                    //obj.put("followers", User.followers(connection, resultSet.getString("users.email")));
-                    //obj.put("following", User.followings(connection, resultSet.getString("users.email")));
-                    //obj.put("subscriptions", User.subscriptions(connection, resultSet.getString("users.email")));
                 }
 
                 String[] following = (resultSet.getString("following") != null) ? resultSet.getString("following").split(",") : new String[] { };
